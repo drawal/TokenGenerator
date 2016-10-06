@@ -45,6 +45,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="BrowserBasedServiceTokenTests.cs" />
     <Compile Include="ServiceTokenTests.cs" />
     <Compile Include="BrowserBasedSecurityContextTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
+using System.Threading;
 using System.Windows.Forms;
 
 namespace FCSAmerica.McGruff.TokenGenerator.BrowserBased
@@ -30,17 +31,13 @@ namespace FCSAmerica.McGruff.TokenGenerator.BrowserBased
             _browser.AllowNavigation = true;
             _browser.Navigated += _browser_Navigated;
             _browser.DocumentCompleted += _browser_DocumentCompleted;
+            _browser.ScriptErrorsSuppressed = true;
         }
 
         public string RetrieveToken()
         {
             _browser.Navigate(_authenticationUrl);
-
-            while (_stsToken == null)
-            {
-                Application.DoEvents();
-            }
-
+            Application.Run();
             return _stsToken;
         }
 
@@ -53,7 +50,7 @@ namespace FCSAmerica.McGruff.TokenGenerator.BrowserBased
                 var currentBrowser = (sender as WebBrowser);
                 if (currentBrowser == null)
                 {
-                    RaiseTokenRetrievalError(new Exception("WebBrowser is null."));
+                    StartExitingThreadWithError(new Exception("WebBrowser is null."));
                     return;
                 }
 
@@ -61,7 +58,7 @@ namespace FCSAmerica.McGruff.TokenGenerator.BrowserBased
 
                 if (document == null)
                 {
-                    RaiseTokenRetrievalError(new Exception("document is null."));
+                    StartExitingThreadWithError(new Exception("document is null."));
                     return;
                 }
                 _traceSource.TraceInformation("\nBrowser_DocumentComplete Count: " + _browserRedirectCount);
@@ -71,12 +68,12 @@ namespace FCSAmerica.McGruff.TokenGenerator.BrowserBased
                 if (document.ActiveElement != null)
                 {
                     var wsResultElement = document.All.GetElementsByName("wresult");
-                    if (wsResultElement != null && wsResultElement.Count > 0)
+                    if (wsResultElement.Count > 0)
                     {
 
                         var wsResultValue = wsResultElement[0].GetAttribute("value");
 
-                        if (wsResultValue != null)
+                        if (!string.IsNullOrEmpty(wsResultValue))
                         {
                             var issuerRedirectUrlSearchText = string.Format("<Issuer>{0}</Issuer>", _issuingAuthority);
 
@@ -84,24 +81,37 @@ namespace FCSAmerica.McGruff.TokenGenerator.BrowserBased
                             {
                                 // stop we have the token.
                                 var stsToken = wsResultValue;
-                                RaiseTokenRetrievalCompletion(stsToken);
+                                StartExitingThreadWithToken(stsToken);
                             }
+
                         }
+                        else
+                        {
+                            TraceHtml("wresult value is empty.", document);
+                        }
+                    }
+                    else
+                    {
+                        TraceHtml("wresult element not found.", document);
                     }
                 }
 
                 if (_browserRedirectCount == MaxRedirectLoopCount)
                 {
                     _traceSource.TraceInformation("\nMaxRedirectLoopCount reached. Stopping browser and returning back empty token.");
-
-                    //Raise TokenRetrievalCompletion with empty token
-                    RaiseTokenRetrievalCompletion(string.Empty);
+                    StartExitingThreadWithToken(string.Empty);
                 }
             }
             catch (Exception ex)
             {
-                RaiseTokenRetrievalError(ex);
+                StartExitingThreadWithError(ex);
             }
+        }
+
+        private void TraceHtml(string message, HtmlDocument document)
+        {
+            var documentHtml = (document.Body == null) ? document.ToString() : document.Body.InnerHtml;
+            _traceSource.TraceEvent(TraceEventType.Warning, 0, "\n" + message + " Document Html:\n " + documentHtml);
         }
 
         void _browser_Navigated(object sender, WebBrowserNavigatedEventArgs e)
@@ -109,16 +119,16 @@ namespace FCSAmerica.McGruff.TokenGenerator.BrowserBased
             _traceSource.TraceInformation("\nBrowser Navigation completed to url: {0}", e.Url);
         }
 
-        private void RaiseTokenRetrievalCompletion(string token)
+        private void StartExitingThreadWithToken(string token)
         {
             _stsToken = token;
+            Application.ExitThread();
         }
 
-        private void RaiseTokenRetrievalError(Exception ex)
+        private void StartExitingThreadWithError(Exception ex)
         {
             _traceSource.TraceEvent(TraceEventType.Error, 0, "Error Occured during DocumentComplete.\n{0}", ex.ToString());
-
-            _stsToken = string.Empty;
+            Application.ExitThread();
         }
 
         public void Dispose()

@@ -29,6 +29,7 @@ namespace FCSAmerica.McGruff.TokenGenerator.BrowserBased
 
                 var securityContextRetreiver = new Thread(() =>
                 {
+                    Thread.CurrentThread.IsBackground = true;
                     using (var t = new BrowserTokenRetriever(AuthenticationEndpoint, issuingAuthority))
                     {
                         stsToken = t.RetrieveToken();
@@ -47,6 +48,7 @@ namespace FCSAmerica.McGruff.TokenGenerator.BrowserBased
                 _traceSource.TraceEvent(TraceEventType.Error, 0, "\nException occured during TokenRetriever RetrieveToken.\n" + UnwrapException(ex).ToString());
             }
 
+            SetExpireDateFromToken();
         }
 
         private Exception UnwrapException(Exception exception)

@@ -111,6 +111,13 @@ namespace FCSAmerica.McGruff.TokenGenerator
             }
             set { _partnerName = value; }
         }
+        public DateTime TokenExpireDate
+        {
+            get
+            {
+                return _tokenExpireDate;
+            }
+        }
 
         private DateTime _tokenExpireDate = DateTime.MaxValue;
         protected string _token;
@@ -441,7 +448,7 @@ namespace FCSAmerica.McGruff.TokenGenerator
             }
         }
 
-        private void SetExpireDateFromToken()
+        protected void SetExpireDateFromToken()
         {
             XmlDocument samlToken = new XmlDocument();
             samlToken.LoadXml(_token);

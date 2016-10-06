@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Configuration;
+using System.Diagnostics;
 using System.Text;
 using FCSAmerica.McGruff.TokenGenerator.BrowserBased;
 
@@ -7,8 +8,13 @@ namespace TokenGenerator.BrowserBased.ConsoleTest
 {
     class Program
     {
+        protected static readonly TraceSource TraceSource = new TraceSource("TokenGenerator.BrowserBased.ConsoleTest");
+            
         static void Main(string[] args)
         {
+            try
+            {
+                
             var ecsAddress = ConfigurationManager.AppSettings["ECSServerAddress"];
             var applicationName = ConfigurationManager.AppSettings["ApplicationName"];
             var partnerName = ConfigurationManager.AppSettings["PartnerName"];
@@ -21,7 +27,16 @@ namespace TokenGenerator.BrowserBased.ConsoleTest
             Console.WriteLine("\nAuditInfo:" + securityContext.AuditInfo);
             Console.WriteLine("\nDecoded AuditInfo:" + DecodedBase64(securityContext.AuditInfo));
 
-            Console.ReadLine();
+            
+            }
+            catch (Exception ex)
+            {
+                TraceSource.TraceData(
+                 TraceEventType.Error,
+                 0,
+                 new {ErrorDescription = "Error: " + ex.ToString(), });
+            }
+            //Console.ReadLine();
         }
 
         private static string DecodedBase64(string base64String)
